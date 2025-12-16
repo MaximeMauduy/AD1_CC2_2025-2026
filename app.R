@@ -95,24 +95,24 @@ server <- function(input, output, session) {
   # 4. Téléchargement Word
   # ---------------------------------------------------------
   
-  output$rapport_html <- renderUI({
-  req(fichier_groupe())
+  output$download_word <- downloadHandler(
+  filename = function() {
+    paste0("Corrige_", tools::file_path_sans_ext(input$groupe), ".docx")
+  },
+  content = function(file) {
 
-  out_html <- file.path("www", "corrige.html")
-
-  rmarkdown::render(
-    input = "report_template.Rmd",
-    output_format = "html_document",
-    output_file = out_html,
-    params = list(
-      data_path = fichier_groupe()
-    ),
-    quiet = TRUE,
-    envir = new.env()
-  )
-
-  includeHTML(out_html)
-})
+    rmarkdown::render(
+      input = "report_template.Rmd",
+      output_format = "word_document",
+      output_file = file,
+      params = list(
+        data_path = fichier_groupe()
+      ),
+      quiet = TRUE,
+      envir = new.env()
+    )
+  }
+)
   
   # ---------------------------------------------------------
   # 5. Téléchargement HTML
@@ -138,4 +138,5 @@ server <- function(input, output, session) {
 )
 
 shinyApp(ui, server)
+
 
