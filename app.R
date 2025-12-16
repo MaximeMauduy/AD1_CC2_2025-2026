@@ -2,10 +2,6 @@ library(shiny)
 library(rmarkdown)
 library(readxl)
 
-if (!dir.exists("www")) {
-  dir.create("www")
-}
-
 ui <- fluidPage(
   
   titlePanel("AD1 – CC2 (25–26) | Corrigé automatique"),
@@ -138,5 +134,6 @@ server <- function(input, output, session) {
 )
 
 shinyApp(ui, server)
+
 
 
