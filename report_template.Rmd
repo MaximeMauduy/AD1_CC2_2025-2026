@@ -1,0 +1,309 @@
+---
+title: "AD1 - CC2 25-26 - Corrigé"
+author: "Maxime Mauduy"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+  word_document: default
+params:
+  data_path: NULL
+---
+
+
+```{r , include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+
+library(psych)
+library(rsq)
+library(readxl)
+
+# -------------------------------------------------------------
+# Chargement des données : ICI remplacer par le fichier du groupe
+# -------------------------------------------------------------
+
+df <- read_excel(params$data_path)
+
+# -------------------------------------------------------------
+# Recodages
+# -------------------------------------------------------------
+
+# Groupe en contrastes (-0.5 / +0.5)
+df$Groupe_c <- -0.5* (df$Groupe == "PremGen") + 
+  0.5*(df$Groupe == "GenCont")
+
+# Centrage simple
+df$PercepSelect_c <- as.numeric(scale(df$PercepSelect, scale = FALSE))
+
+# Écart-type
+sd_select <- sd(df$PercepSelect)
+
+# Variable "haut niveau de sélection" = +1.5 SD
+plus15 <- mean(df$PercepSelect) + 1.5 * sd_select
+
+df$PercepSelect_high <- df$PercepSelect - plus15
+
+# -------------------------------------------------------------
+# Modèle global
+# -------------------------------------------------------------
+model1 <- lm(Perf ~ Groupe_c * PercepSelect_c, data = df)
+
+# IC + PRE
+ci <- confint(model1)
+rsq.partial(model1)
+
+# Modèle effet simple plus 1.5
+
+model_high <- lm(Perf ~ Groupe_c * PercepSelect_high, data = df)
+
+# Modèle effet simple Génération continuante
+df$Groupe_Continuante <- -1* (df$Groupe == "PremGen") + 
+  0*(df$Groupe == "GenCont")
+
+model3 <- lm(Perf ~ Groupe_Continuante * PercepSelect_c, data = df)
+
+
+```
+
+
+```{r, echo=FALSE}
+apa_p <- function(pval) {
+  if (pval < .001) {
+    return("< .001")
+  } else {
+    return(paste0("= ", sub("0\\.", ".", format(round(pval, 3), nsmall = 3))))
+  }
+}
+
+```
+
+
+
+```{r, echo=FALSE}
+
+apa_pre <- function(x, digits = 2) {
+  if (is.na(x)) return(NA)
+  out <- round(x, digits)
+  sub("^0", "", format(out, nsmall = digits))
+}
+
+```
+
+```{r, echo=FALSE}
+
+sig_txt <- function(p, alpha = .05) {
+  if (is.na(p)) return("n’est pas significatif")
+  if (p < alpha) "est significatif" else "n’est pas significatif"
+}
+
+```
+
+
+```{r, echo=FALSE}
+
+apa_r2 <- function(x, digits = 2) {
+  if (is.na(x)) return(NA)
+  out <- round(x, digits)
+  sub("^0", "", format(out, nsmall = digits))
+}
+
+```
+
+
+
+# Résultats
+
+Nous avons testé un modèle de régression linéaire incluant le statut d’étudiant (PremGen = -0.5, Génération continuante = +0.5), la sélection perçue (centrée), et leur interaction. Le modèle global est significatif, *F*(`r round(summary(model1)$fstatistic[2])`, `r summary(model1)$fstatistic[3]`) = `r round(summary(model1)$fstatistic[1],2)`, *p* <.001, *R²* = `r apa_r2(summary(model1)$r.squared)`.
+
+
+Plus précisément, l’effet principal du groupe `r sig_txt(summary(model1)$coefficients[2, "Pr(>|t|)"])`, *b* = `r round(coef(model1)[2],2)`, IC95% [`r round(ci[2,1],2)`, `r round(ci[2,2],2)`], *t*(`r summary(model1)$df[2]`) = `r round(summary(model1)$coefficients[2,3],2)`, *p* `r apa_p(summary(model1)$coefficients[2, "Pr(>|t|)"])`, PRE = `r apa_pre(rsq.partial(model1)$partial.rsq[1])`.
+Les étudiants de génération continuante performent mieux (*M* = `r round(mean(df$Perf[df$Groupe=="GenCont"]),2)`, *SD* = `r round(sd(df$Perf[df$Groupe=="GenCont"]),2)`) que ceux de première génération (*M* = `r round(mean(df$Perf[df$Groupe=="PremGen"]),2)`, *SD* = `r round(sd(df$Perf[df$Groupe=="PremGen"]),2)`). Ces résultats vont dans le sens de notre première hypothèse. 
+
+
+De plus, l’effet principal de la sélection perçue `r sig_txt(summary(model1)$coefficients[3, "Pr(>|t|)"])`, *b* = `r round(coef(model1)[3],2)`, IC95% [`r round(ci[3,1],2)`, `r round(ci[3,2],2)`], *t*(`r summary(model1)$df[2]`) = `r round(summary(model1)$coefficients[3,3],2)`, *p* `r apa_p(summary(model1)$coefficients[3, "Pr(>|t|)"])`, PRE = `r apa_pre(rsq.partial(model1)$partial.rsq[2])`.
+
+
+Enfin, l'effet d'interaction Groupe × Sélection perçue `r sig_txt(summary(model1)$coefficients[4, "Pr(>|t|)"])`, *b* = `r round(coef(model1)[4],2)`, IC95% [`r round(ci[4,1],2)`, `r round(ci[4,2],2)`], *t*(`r summary(model1)$df[2]`) = `r round(summary(model1)$coefficients[4,3],2)`, *p* `r apa_p(summary(model1)$coefficients[4, "Pr(>|t|)"])`, PRE = `r apa_pre(rsq.partial(model1)$partial.rsq[3])`. 
+
+Cette interaction indique que l’écart de performance entre les groupes augmente lorsque la sélection perçue augmente (cf. Figure 1). Ces résultats vont dans le sens de notre deuxième hypothèse.
+
+\
+
+**Figure 1.** *Interaction entre le statut d’étudiant et la sélection perçue sur la performance à la tâche d’arithmétique.*
+
+```{r, echo=FALSE, message = FALSE, warning=FALSE}
+
+# -------------------------------------------------------------
+# Tracé de l'interaction Groupe × Sélection perçue
+# -------------------------------------------------------------
+
+# Séquence de valeurs de sélection perçue
+x_seq <- seq(min(df$PercepSelect),
+             max(df$PercepSelect),
+             length.out = 100)
+
+# Données pour PremGen
+new_PremGen <- data.frame(
+  Groupe_c = -0.5,
+  PercepSelect_c = x_seq - mean(df$PercepSelect)
+)
+
+# Données pour GenCont
+new_GenCont <- data.frame(
+  Groupe_c = 0.5,
+  PercepSelect_c = x_seq - mean(df$PercepSelect)
+)
+
+# Prédictions
+y_PremGen <- predict(model1, new_PremGen)
+y_GenCont <- predict(model1, new_GenCont)
+
+# Plot APA
+plot(x_seq, y_PremGen,
+     type = "l",
+     lwd = 2,
+     lty = 1,
+     xlab = "Sélection perçue à l’université",
+     ylab = "Performance à la tâche d’arithmétique",
+     ylim = range(y_PremGen, y_GenCont),
+     cex.lab = 1.1,
+     cex.axis = 1)
+
+lines(x_seq, y_GenCont, lwd = 2, lty = 2)
+
+legend("topleft",
+       legend = c("Première génération", "Génération continuante"),
+       lwd = 2,
+       lty = c(1, 2),
+       bty = "n",
+       cex = 1)
+
+
+```
+
+*Note*. Les lignes représentent les valeurs prédites par le modèle de régression linéaire.
+
+\
+
+L’effet simple du groupe `r sig_txt(summary(model_high)$coefficients[2, "Pr(>|t|)"])`, *b* = `r round(coef(model_high)[2],2)`, IC95% [`r round(confint(model_high)[2,1],2)`, `r round(confint(model_high)[2,2],2)`], *t*(`r summary(model_high)$df[2]`) = `r round(summary(model_high)$coefficients[2,3],2)`, *p* `r apa_p(summary(model_high)$coefficients[2, "Pr(>|t|)"])`, PRE = `r apa_pre(rsq.partial(model_high)$partial.rsq[1])`.
+
+
+L'effet simple de la sélection perçue pour les étudiants de génération continuante `r sig_txt(summary(model3)$coefficients[2, "Pr(>|t|)"])`, *b* = `r round(coef(model3)[2],2)`, IC95% [`r round(confint(model3)[2,1],2)`, `r round(confint(model3)[2,2],2)`], *t*(`r summary(model3)$df[2]`) = `r round(summary(model3)$coefficients[2,3],2)`, *p* `r apa_p(summary(model3)$coefficients[2, "Pr(>|t|)"])`, PRE = `r apa_pre(rsq.partial(model3)$partial.rsq[2])`.
+
+
+***
+
+
+# Annexes
+
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+
+#chargement des packages
+library(psych)
+library(rsq)
+library(readxl)
+
+```
+
+
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+
+# -------------------------------------------------------------
+# Recodages et création de variables
+# -------------------------------------------------------------
+
+# Groupe en contrastes (-0.5 / +0.5)
+df$Groupe_c <- -0.5* (df$Groupe == "PremGen") + 
+  0.5*(df$Groupe == "GenCont")
+
+# Centrage simple
+df$PercepSelect_c <- scale(df$PercepSelect, scale = FALSE)
+
+# Écart-type
+sd_select <- sd(df$PercepSelect)
+
+# Variable "haut niveau de sélection" = +1.5 SD
+plus15 <- mean(df$PercepSelect) + 1.5 * sd_select
+
+df$PercepSelect_high <- df$PercepSelect - plus15
+
+# Variable Groupe avec GenCont à 0
+
+df$Groupe_Continuante <- -1* (df$Groupe == "PremGen") + 
+  0*(df$Groupe == "GenCont")
+
+
+```
+
+
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+
+# -------------------------------------------------------------
+# Modèle global
+# -------------------------------------------------------------
+
+model1 <- lm(Perf ~ Groupe_c * PercepSelect_c, data = df)
+summary(model1)
+
+# IC + PRE
+confint(model1)
+rsq.partial(model1)
+
+
+```
+
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+
+# -------------------------------------------------------------
+# Modèle effet simple plus 1.5
+# -------------------------------------------------------------
+
+model_high <- lm(Perf ~ Groupe_c * PercepSelect_high, data = df)
+summary(model_high)
+
+# IC + PRE
+confint(model_high)
+rsq.partial(model_high)
+
+```
+
+
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+
+# -------------------------------------------------------------
+# Modèle effet simple Génération continuante
+# -------------------------------------------------------------
+
+model3 <- lm(Perf ~ Groupe_Continuante * PercepSelect_c, data = df)
+summary(model3)
+
+# IC + PRE
+confint(model3)
+rsq.partial(model3)
+
+
+```
+
+
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+
+# -------------------------------------------------------------
+# Statistiques descriptives
+# -------------------------------------------------------------
+
+describeBy(df$Perf, df$Groupe)
+
+# IC + PRE
+confint(model3)
+rsq.partial(model3)
+
+
+```
+
+
