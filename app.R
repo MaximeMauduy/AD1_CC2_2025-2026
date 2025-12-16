@@ -2,6 +2,10 @@ library(shiny)
 library(rmarkdown)
 library(readxl)
 
+if (!dir.exists("www")) {
+  dir.create("www")
+}
+
 ui <- fluidPage(
   
   titlePanel("AD1 – CC2 (25–26) | Corrigé automatique"),
@@ -69,73 +73,69 @@ server <- function(input, output, session) {
   # ---------------------------------------------------------
   
   output$rapport_html <- renderUI({
-    
-    req(fichier_groupe())
-    
-    # Fichier HTML temporaire
-    html_out <- tempfile(fileext = ".html")
-    
-    # Rendu du R Markdown
-    rmarkdown::render(
-      input = "report_template.Rmd",
-      output_file = html_out,
-      output_format = "html_document",
-      params = list(
-        data_path = fichier_groupe()
-      ),
-      envir = new.env(parent = globalenv()),
-      quiet = TRUE
-    )
-    
-    # Affichage DIRECT du HTML
-    includeHTML(html_out)
-  })
+  req(fichier_groupe())
+
+  out_html <- file.path("www", "corrige.html")
+
+  rmarkdown::render(
+    input = "report_template.Rmd",
+    output_format = "html_document",
+    output_file = out_html,
+    params = list(
+      data_path = fichier_groupe()
+    ),
+    quiet = TRUE,
+    envir = new.env()
+  )
+
+  includeHTML(out_html)
+})
   
   # ---------------------------------------------------------
   # 4. Téléchargement Word
   # ---------------------------------------------------------
   
-  output$download_word <- downloadHandler(
-    filename = function() {
-      paste0("Corrige_", tools::file_path_sans_ext(input$groupe), ".docx")
-    },
-    content = function(file) {
-      
-      rmarkdown::render(
-        input = "report_template.Rmd",
-        output_format = "word_document",
-        output_file = file,
-        params = list(
-          data_path = fichier_groupe()
-        ),
-        envir = new.env(parent = globalenv()),
-        quiet = TRUE
-      )
-    }
+  output$rapport_html <- renderUI({
+  req(fichier_groupe())
+
+  out_html <- file.path("www", "corrige.html")
+
+  rmarkdown::render(
+    input = "report_template.Rmd",
+    output_format = "html_document",
+    output_file = out_html,
+    params = list(
+      data_path = fichier_groupe()
+    ),
+    quiet = TRUE,
+    envir = new.env()
   )
+
+  includeHTML(out_html)
+})
   
   # ---------------------------------------------------------
   # 5. Téléchargement HTML
   # ---------------------------------------------------------
   
   output$download_html <- downloadHandler(
-    filename = function() {
-      paste0("Corrige_", tools::file_path_sans_ext(input$groupe), ".html")
-    },
-    content = function(file) {
-      
-      rmarkdown::render(
-        input = "report_template.Rmd",
-        output_format = "html_document",
-        output_file = file,
-        params = list(
-          data_path = fichier_groupe()
-        ),
-        envir = new.env(parent = globalenv()),
-        quiet = TRUE
-      )
-    }
-  )
-}
+  filename = function() {
+    paste0("Corrige_", tools::file_path_sans_ext(input$groupe), ".html")
+  },
+  content = function(file) {
+
+    rmarkdown::render(
+      input = "report_template.Rmd",
+      output_format = "html_document",
+      output_file = file,
+      params = list(
+        data_path = fichier_groupe()
+      ),
+      quiet = TRUE,
+      envir = new.env()
+    )
+  }
+)
 
 shinyApp(ui, server)
+
