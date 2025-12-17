@@ -95,16 +95,26 @@ server <- function(input, output, session) {
   })
   
   output$rapport_html <- renderUI({
-    req(rapport_html_gen())
-    print(fichier_groupe())
-    
-    tags$iframe(
-      src = rapport_html_gen(),
-      width = "100%",
-      height = "800px",
-      style = "border: none;"
-    )
-  })
+  req(fichier_groupe())
+
+  tmp_rmd  <- tempfile(fileext = ".Rmd")
+  tmp_html <- tempfile(fileext = ".html")
+
+  file.copy("report_template.Rmd", tmp_rmd, overwrite = TRUE)
+
+  rmarkdown::render(
+    input = tmp_rmd,
+    output_format = "html_document",
+    output_file = tmp_html,
+    params = list(
+      data_path = fichier_groupe()
+    ),
+    quiet = TRUE
+  )
+
+  HTML(paste(readLines(tmp_html, encoding = "UTF-8"), collapse = "\n"))
+})
+
   
   # ---------------------------------------------------------
   # 4. Téléchargement Word
@@ -158,5 +168,6 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui, server)
+
 
 
