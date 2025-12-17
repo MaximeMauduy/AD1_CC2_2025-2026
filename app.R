@@ -11,18 +11,11 @@ ui <- fluidPage(
       
       selectInput(
         inputId = "groupe",
-        label = "Sélectionnez votre fichier de données :",
+        label = "Sélectionnez votre groupe :",
         choices = NULL
       ),
       
       br(),
-      
-      actionButton(
-        "generate",
-        "Générer le corrigé"
-      ),
-      
-      br(), br(),
       
       downloadButton(
         outputId = "download_word",
@@ -47,10 +40,10 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   
   # ---------------------------------------------------------
-  # 1. Lister TOUS les fichiers du dossier data
+  # 1. Lister automatiquement les fichiers GroupeX.xlsx
   # ---------------------------------------------------------
   
-  fichiers_data <- list.files(
+  groupes_disponibles <- list.files(
     path = "data",
     pattern = "\\.xlsx$",
     full.names = FALSE
@@ -59,7 +52,7 @@ server <- function(input, output, session) {
   updateSelectInput(
     session,
     "groupe",
-    choices = fichiers_data
+    choices = groupes_disponibles
   )
   
   # ---------------------------------------------------------
@@ -68,51 +61,31 @@ server <- function(input, output, session) {
   
   fichier_groupe <- reactive({
     req(input$groupe)
-    file.path("data", input$groupe)
+    normalizePath(file.path("data", input$groupe), mustWork = TRUE)
   })
   
   # ---------------------------------------------------------
-  # 3. Génération du rapport (HTML) — déclenchée EXPLICITEMENT
+  # 3. Rendu HTML DIRECTEMENT dans l’application
   # ---------------------------------------------------------
-  
-  rapport_html_gen <- eventReactive(input$generate, {
-    
-    tmp_rmd  <- tempfile(fileext = ".Rmd")
-    tmp_html <- tempfile(fileext = ".html")
-    
-    file.copy("report_template.Rmd", tmp_rmd, overwrite = TRUE)
-    
-    rmarkdown::render(
-      input = tmp_rmd,
-      output_file = tmp_html,
-      params = list(
-        data_path = fichier_groupe()
-      ),
-      quiet = FALSE
-    )
-    
-    tmp_html
-  })
   
   output$rapport_html <- renderUI({
+
   req(fichier_groupe())
 
-  tmp_rmd  <- tempfile(fileext = ".Rmd")
-  tmp_html <- tempfile(fileext = ".html")
-
-  file.copy("report_template.Rmd", tmp_rmd, overwrite = TRUE)
+  html_out <- file.path("www", "apercu.html")
 
   rmarkdown::render(
-    input = tmp_rmd,
+    input = "report_template.Rmd",
+    output_file = html_out,
     output_format = "html_document",
-    output_file = tmp_html,
     params = list(
       data_path = fichier_groupe()
     ),
+    envir = new.env(parent = globalenv()),
     quiet = TRUE
   )
 
-  HTML(paste(readLines(tmp_html, encoding = "UTF-8"), collapse = "\n"))
+  includeHTML(html_out)
 })
 
   
@@ -121,53 +94,48 @@ server <- function(input, output, session) {
   # ---------------------------------------------------------
   
   output$download_word <- downloadHandler(
-    filename = function() {
-      paste0("Corrige_", tools::file_path_sans_ext(input$groupe), ".docx")
-    },
-    content = function(file) {
-      
-      tmp_rmd <- tempfile(fileext = ".Rmd")
-      file.copy("report_template.Rmd", tmp_rmd, overwrite = TRUE)
-      
-      rmarkdown::render(
-        input = tmp_rmd,
-        output_format = "word_document",
-        output_file = file,
-        params = list(
-          data_path = fichier_groupe()
-        ),
-        quiet = FALSE
-      )
-    }
-  )
+  filename = function() {
+    paste0("Corrige_", tools::file_path_sans_ext(input$groupe), ".docx")
+  },
+  content = function(file) {
+
+    rmarkdown::render(
+      input = "report_template.Rmd",
+      output_format = "word_document",
+      output_file = file,
+      params = list(
+        data_path = fichier_groupe()
+      ),
+      envir = new.env(parent = globalenv()),
+      quiet = TRUE
+    )
+  }
+)
+
   
   # ---------------------------------------------------------
   # 5. Téléchargement HTML
   # ---------------------------------------------------------
   
   output$download_html <- downloadHandler(
-    filename = function() {
-      paste0("Corrige_", tools::file_path_sans_ext(input$groupe), ".html")
-    },
-    content = function(file) {
-      
-      tmp_rmd <- tempfile(fileext = ".Rmd")
-      file.copy("report_template.Rmd", tmp_rmd, overwrite = TRUE)
-      
-      rmarkdown::render(
-        input = tmp_rmd,
-        output_format = "html_document",
-        output_file = file,
-        params = list(
-          data_path = fichier_groupe()
-        ),
-        quiet = FALSE
-      )
-    }
-  )
+  filename = function() {
+    paste0("Corrige_", tools::file_path_sans_ext(input$groupe), ".html")
+  },
+  content = function(file) {
+
+    rmarkdown::render(
+      input = "report_template.Rmd",
+      output_file = file,
+      output_format = "html_document",
+      params = list(
+        data_path = fichier_groupe()
+      ),
+      envir = new.env(parent = globalenv()),
+      quiet = TRUE
+    )
+  }
+)
+
 }
 
 shinyApp(ui, server)
-
-
-
