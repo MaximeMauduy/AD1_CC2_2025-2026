@@ -96,6 +96,7 @@ server <- function(input, output, session) {
   
   output$rapport_html <- renderUI({
     req(rapport_html_gen())
+    print(fichier_groupe())
     
     tags$iframe(
       src = rapport_html_gen(),
@@ -125,7 +126,7 @@ server <- function(input, output, session) {
         params = list(
           data_path = fichier_groupe()
         ),
-        quiet = TRUE
+        quiet = FALSE
       )
     }
   )
@@ -150,11 +151,12 @@ server <- function(input, output, session) {
         params = list(
           data_path = fichier_groupe()
         ),
-        quiet = TRUE
+        quiet = FALSE
       )
     }
   )
 }
 
 shinyApp(ui, server)
+
 
