@@ -88,7 +88,7 @@ server <- function(input, output, session) {
       params = list(
         data_path = fichier_groupe()
       ),
-      quiet = TRUE
+      quiet = FALSE
     )
     
     tmp_html
@@ -157,3 +157,4 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui, server)
+
